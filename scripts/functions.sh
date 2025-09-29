@@ -1,147 +1,195 @@
 #!/bin/bash
 
-# TeaSpeak Docker Functions Library
-# Common functions used across multiple scripts
+# TeaSpeak Functions Library
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
-
-# Logging functions
-log_info() {
-    echo -e "${BLUE}[INFO]${NC} $1"
+# Check if required packages are installed
+check_installed_packages() {
+    echo "Checking installed packages..."
+    
+    if ! command -v wget >/dev/null 2>&1; then
+        echo "ERROR: wget is not installed!"
+        exit 1
+    fi
+    
+    if ! command -v curl >/dev/null 2>&1; then
+        echo "ERROR: curl is not installed!"
+        exit 1
+    fi
+    
+    if ! command -v python3 >/dev/null 2>&1; then
+        echo "ERROR: python3 is not installed!"
+        exit 1
+    fi
+    
+    echo "All required packages are installed."
 }
 
-log_success() {
-    echo -e "${GREEN}[SUCCESS]${NC} $1"
+# Create necessary folders
+create_folders() {
+    echo "Creating necessary folders..."
+    mkdir -p /opt/teaspeak/save
+    mkdir -p /opt/teaspeak/save/backup
+    mkdir -p /opt/teaspeak/logs
+    mkdir -p /opt/teaspeak/files
+    mkdir -p /opt/teaspeak/database
+    mkdir -p /opt/teaspeak/certs
 }
 
-log_warning() {
-    echo -e "${YELLOW}[WARNING]${NC} $1"
+# Create necessary files
+create_files() {
+    echo "Creating necessary files..."
+    
+    # Create default config if not exists
+    if [ ! -f "/opt/teaspeak/save/config.yml" ]; then
+        if [ -f "/opt/teaspeak/config.yml" ]; then
+            cp /opt/teaspeak/config.yml /opt/teaspeak/save/config.yml
+        fi
+    fi
+    
+    # Create protocol key if not exists
+    if [ ! -f "/opt/teaspeak/save/protocol_key.txt" ]; then
+        if [ -f "/opt/teaspeak/protocol_key.txt" ]; then
+            cp /opt/teaspeak/protocol_key.txt /opt/teaspeak/save/protocol_key.txt
+        fi
+    fi
 }
 
-log_error() {
-    echo -e "${RED}[ERROR]${NC} $1"
+# Create symbolic links
+create_links() {
+    echo "Creating symbolic links..."
+    
+    # Link config files from save directory
+    if [ -f "/opt/teaspeak/save/config.yml" ]; then
+        ln -sf /opt/teaspeak/save/config.yml /opt/teaspeak/config.yml
+    fi
+    
+    if [ -f "/opt/teaspeak/save/protocol_key.txt" ]; then
+        ln -sf /opt/teaspeak/save/protocol_key.txt /opt/teaspeak/protocol_key.txt
+    fi
+    
+    # Link data directories
+    ln -sf /opt/teaspeak/logs /opt/teaspeak/save/logs
+    ln -sf /opt/teaspeak/files /opt/teaspeak/save/files
+    ln -sf /opt/teaspeak/database /opt/teaspeak/save/database
+    ln -sf /opt/teaspeak/certs /opt/teaspeak/save/certs
 }
 
-# Check if command exists
-command_exists() {
-    command -v "$1" >/dev/null 2>&1
+# Clean cached folder
+clean_cached_folder() {
+    echo "Cleaning cached folder..."
+    rm -rf /opt/teaspeak_cached/*
 }
 
-# Check Docker installation
-check_docker() {
-    if ! command_exists docker; then
-        log_error "Docker is not installed or not in PATH"
+# Clean teaspeak folder (keep save directory)
+clean_teaspeak_folder() {
+    echo "Cleaning TeaSpeak folder..."
+    find /opt/teaspeak -maxdepth 1 -type f -not -name "version" -not -name "predownloaded" -delete
+    find /opt/teaspeak -maxdepth 1 -type d -not -name "save" -not -name "scripts" -not -path "/opt/teaspeak" -exec rm -rf {} +
+}
+
+# Set ownership for teaspeak user
+chown_teaspeak_folder() {
+    echo "Setting ownership for TeaSpeak folder..."
+    chown -R tea:tea /opt/teaspeak
+    chown -R tea:tea /opt/teaspeak_cached
+}
+
+# Create minimal run script
+create_minimal_runscript() {
+    echo "Creating minimal run script..."
+    
+    cat > /opt/teaspeak/teastart_minimal.sh << 'EOF'
+#!/bin/bash
+
+cd /opt/teaspeak
+
+# Use QEMU if on ARM architecture
+if [ "$SYSTEM_ARCHITECTURE" = "arm64" ] || [ "$SYSTEM_ARCHITECTURE" = "arm32v7" ]; then
+    echo "Starting TeaSpeak with QEMU emulation..."
+    exec qemu-x86_64-static ./teastart_minimal.sh
+else
+    echo "Starting TeaSpeak natively..."
+    exec ./teastart_minimal.sh
+fi
+EOF
+
+    chmod +x /opt/teaspeak/teastart_minimal.sh
+}
+
+# Get latest TeaSpeak version info
+get_latest_version_info() {
+    echo "Getting latest TeaSpeak version info..."
+    
+    # TeaSpeak doesn't have a public API like TeamSpeak, so we'll use GitHub releases
+    LATEST_VERSION=$(curl -s "https://api.github.com/repos/TeaSpeak/TeaSpeak/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+    
+    if [ -z "$LATEST_VERSION" ]; then
+        echo "Failed to get latest version info"
         return 1
     fi
     
-    if ! docker info >/dev/null 2>&1; then
-        log_error "Docker daemon is not running"
+    echo "Latest version: $LATEST_VERSION"
+    echo "$LATEST_VERSION"
+}
+
+# Download TeaSpeak
+download_teaspeak() {
+    local version=$1
+    echo "Downloading TeaSpeak version $version..."
+    
+    # Since we have local files, we should use them instead of downloading
+    if [ -d "/opt/teaspeak/TeaSpeak-${version}" ]; then
+        echo "Using local TeaSpeak files for version $version"
+        return 0
+    fi
+    
+    # Fallback to download if local files not available
+    wget -O /opt/teaspeak_cached/TeaSpeak-${version}.tar.gz \
+        "https://repo.teaspeak.de/server/linux/amd64_stable/TeaSpeak-${version}.tar.gz" \
+        > /dev/null 2>&1
+    
+    if [ $? -ne 0 ]; then
+        echo "Failed to download TeaSpeak $version"
         return 1
     fi
     
+    echo "TeaSpeak $version downloaded successfully"
     return 0
 }
 
-# Check Docker Compose installation
-check_docker_compose() {
-    if docker compose version >/dev/null 2>&1; then
-        echo "docker compose"
-    elif command_exists docker-compose; then
-        echo "docker-compose"
+# Extract TeaSpeak
+extract_teaspeak() {
+    local version=$1
+    echo "Extracting TeaSpeak..."
+    
+    # Check if we have local files first
+    if [ -d "/opt/teaspeak/TeaSpeak-${version}" ]; then
+        echo "Using local TeaSpeak files..."
+        # Copy local files to teaspeak directory
+        cp -r /opt/teaspeak/TeaSpeak-${version}/* /opt/teaspeak/
+        echo "Local TeaSpeak files copied successfully"
+        return 0
+    fi
+    
+    # Fallback to extracting downloaded archive
+    cd /opt/teaspeak_cached
+    if [ -f "TeaSpeak-${version}.tar.gz" ]; then
+        tar -xzf TeaSpeak-${version}.tar.gz
+        
+        if [ $? -ne 0 ]; then
+            echo "Failed to extract TeaSpeak"
+            return 1
+        fi
+        
+        # Move files to teaspeak directory
+        mv TeaSpeak-${version}/* /opt/teaspeak/
+        rmdir TeaSpeak-${version}
+        rm TeaSpeak-${version}.tar.gz
+        
+        echo "TeaSpeak extracted successfully"
+        return 0
     else
-        log_error "Docker Compose is not available"
+        echo "No TeaSpeak archive found"
         return 1
     fi
 }
-
-# Detect system architecture
-detect_architecture() {
-    local arch=$(uname -m)
-    case $arch in
-        x86_64)
-            echo "amd64"
-            ;;
-        aarch64|arm64)
-            echo "arm64"
-            ;;
-        armv7l)
-            echo "arm/v7"
-            ;;
-        *)
-            log_warning "Unknown architecture: $arch, defaulting to amd64"
-            echo "amd64"
-            ;;
-    esac
-}
-
-# Create necessary directories
-create_directories() {
-    local dirs=("data/logs" "data/files" "data/database" "data/certs" "config")
-    
-    for dir in "${dirs[@]}"; do
-        if [ ! -d "$dir" ]; then
-            mkdir -p "$dir"
-            chmod 755 "$dir"
-            log_info "Created directory: $dir"
-        fi
-    done
-}
-
-# Set file permissions
-set_permissions() {
-    local files=("$@")
-    
-    for file in "${files[@]}"; do
-        if [ -f "$file" ]; then
-            chmod +x "$file"
-            log_info "Set executable permission: $file"
-        fi
-    done
-}
-
-# Wait for service to be ready
-wait_for_service() {
-    local host="$1"
-    local port="$2"
-    local timeout="${3:-30}"
-    local count=0
-    
-    log_info "Waiting for service at $host:$port..."
-    
-    while [ $count -lt $timeout ]; do
-        if nc -z "$host" "$port" 2>/dev/null; then
-            log_success "Service is ready at $host:$port"
-            return 0
-        fi
-        
-        sleep 1
-        count=$((count + 1))
-    done
-    
-    log_error "Service at $host:$port is not ready after ${timeout}s"
-    return 1
-}
-
-# Cleanup function
-cleanup_docker() {
-    log_info "Cleaning up Docker resources..."
-    
-    # Remove unused networks
-    docker network prune -f >/dev/null 2>&1 || true
-    
-    # Remove unused images (only dangling ones)
-    docker image prune -f >/dev/null 2>&1 || true
-    
-    log_success "Docker cleanup completed"
-}
-
-# Export functions for use in other scripts
-export -f log_info log_success log_warning log_error
-export -f command_exists check_docker check_docker_compose
-export -f detect_architecture create_directories set_permissions
-export -f wait_for_service cleanup_docker
