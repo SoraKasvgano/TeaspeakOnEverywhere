@@ -1,0 +1,83 @@
+FROM debian:bookworm-slim
+
+ARG TEA_VERSION=1.4.22
+
+# Set environment variables
+ENV TIME_ZONE=Asia/Shanghai
+ENV DIST_UPDATE=0
+ENV TEA_UPDATE=0
+ENV TEA_UPDATE_BACKUP=1
+ENV UID=1000
+ENV GID=1000
+ENV DEBUG=0
+ENV TEA_ARCHITECTURE=amd64
+ENV SYSTEM_ARCHITECTURE=x86_64
+ENV EMULATOR=none
+
+LABEL Maintainer="teaspeak-x86_64"
+
+# Add s6 overlay for process management
+ADD https://github.com/just-containers/s6-overlay/releases/download/v3.1.6.2/s6-overlay-x86_64.tar.xz /tmp/
+ADD https://github.com/just-containers/s6-overlay/releases/download/v3.1.6.2/s6-overlay-noarch.tar.xz /tmp/
+
+# Create directories and install dependencies
+RUN apt-get update && \
+    apt-get upgrade -y && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y \
+        wget \
+        curl \
+        unzip \
+        ca-certificates \
+        python3 \
+        bzip2 \
+        procps \
+        jq \
+        iputils-ping \
+        libdigest-sha-perl \
+        locales \
+        xz-utils && \
+    mkdir -p /opt/teaspeak && \
+    mkdir -p /opt/teaspeak_cached && \
+    mkdir -p /etc/services.d/teaspeak && \
+    mkdir -p /etc/services.d/teaspeak_helper && \
+    tar -C / -Jxpf /tmp/s6-overlay-noarch.tar.xz && \
+    tar -C / -Jxpf /tmp/s6-overlay-x86_64.tar.xz && \
+    sed -i -e 's/# en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen && \
+    dpkg-reconfigure --frontend=noninteractive locales && \
+    update-locale LANG=en_US.UTF-8 && \
+    rm -f /tmp/*.tar.xz
+
+ENV LANG=en_US.UTF-8
+
+WORKDIR /opt/teaspeak
+
+# Copy TeaSpeak files from local directory
+COPY TeaSpeak-${TEA_VERSION}/ /opt/teaspeak/
+
+# Copy service scripts
+COPY scripts/ /opt/teaspeak/scripts/
+COPY services/ /etc/services.d/
+
+# Copy configuration files
+COPY config.yml /opt/teaspeak/
+COPY protocol_key.txt /opt/teaspeak/
+
+# Set permissions and clean up
+RUN chmod +x /opt/teaspeak/scripts/*.sh && \
+    chmod +x /opt/teaspeak/*.sh && \
+    chmod +x /opt/teaspeak/TeaSpeakServer && \
+    chmod +x /etc/services.d/teaspeak/run && \
+    chmod +x /etc/services.d/teaspeak/finish && \
+    chmod +x /etc/services.d/teaspeak_helper/run && \
+    mkdir -p /opt/teaspeak/{logs,files,database,certs} && \
+    chown -R ${UID}:${GID} /opt/teaspeak && \
+    apt-get autoremove -y && \
+    apt-get clean && \
+    ln -fs /usr/share/zoneinfo/$TIME_ZONE /etc/localtime && \
+    dpkg-reconfigure -f noninteractive tzdata && \
+    rm -rf /var/lib/apt/lists/*
+
+EXPOSE 10011/tcp 30033/tcp 9987/udp 9987/tcp
+VOLUME /opt/teaspeak/files /opt/teaspeak/database /opt/teaspeak/certs /opt/teaspeak/logs
+
+ENTRYPOINT [ "/init" ]

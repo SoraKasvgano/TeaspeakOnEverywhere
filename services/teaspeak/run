@@ -1,0 +1,6 @@
+#!/command/with-contenv sh
+sh /opt/teaspeak/scripts/startup.sh
+
+if [ -e "/opt/teaspeak/teastart_minimal.sh" ]; then
+    exec s6-setuidgid tea /opt/teaspeak/teastart_minimal.sh
+fi

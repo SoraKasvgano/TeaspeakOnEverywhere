@@ -1,0 +1,35 @@
+version: "3.8"
+
+# Multi-architecture TeaSpeak Docker Compose configuration
+services:
+  teaspeak:
+    container_name: teaspeak-server
+    image: ${DOCKER_HUB_USERNAME:-teaspeak}/teaspeak-server:latest
+    platform: ${TEASPEAK_ARCH:-}
+    ports:
+      - "${VOICE_PORT:-9987}:9987/udp"
+      - "${VOICE_PORT:-9987}:9987/tcp"
+      - "${QUERY_PORT:-10011}:10011/tcp"
+      - "${FILETRANSFER_PORT:-30033}:30033/tcp"
+    restart: unless-stopped
+    environment:
+      - TEASPEAK_LICENSE_ACCEPTED=true
+      - TEASPEAK_SERVER_NAME=${SERVER_NAME:-TeaSpeak Server}
+      - TEASPEAK_ADMIN_PASSWORD=${ADMIN_PASSWORD:-}
+    volumes:
+      - ./data/logs:/opt/teaspeak/logs
+      - ./data/files:/opt/teaspeak/files
+      - ./data/database:/opt/teaspeak/database
+      - ./data/certs:/opt/teaspeak/certs
+    networks:
+      - teaspeak-network
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "10011"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  teaspeak-network:
+    driver: bridge
