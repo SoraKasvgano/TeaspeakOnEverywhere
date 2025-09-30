@@ -153,6 +153,28 @@ def main():
             if run_command(['docker', 'manifest', 'create', f'{docker_username}/teaspeak-server:latest-predownloaded'] + predownloaded_manifest_images):
                 run_command(['docker', 'manifest', 'push', '--purge', f'{docker_username}/teaspeak-server:latest-predownloaded'])
         
+        # Create unified latest manifest that includes all architectures
+        print("Creating unified latest manifest...")
+        latest_manifest_cmd = [
+            'docker', 'manifest', 'create', 
+            f'{docker_username}/teaspeak-server:latest'
+        ] + manifest_images
+        
+        if run_command(latest_manifest_cmd):
+            # Annotate each architecture
+            for arch, platform in architectures.items():
+                annotate_cmd = [
+                    'docker', 'manifest', 'annotate',
+                    f'{docker_username}/teaspeak-server:latest',
+                    f'{docker_username}/teaspeak-server:{arch}-{tag_name}',
+                    '--arch', arch.replace('x86_64', 'amd64').replace('arm64v8', 'arm64').replace('arm32v7', 'arm'),
+                    '--os', 'linux'
+                ]
+                run_command(annotate_cmd)
+            
+            # Push the unified manifest
+            run_command(['docker', 'manifest', 'push', '--purge', f'{docker_username}/teaspeak-server:latest'])
+        
         # Individual architecture manifests for compatibility
         for arch in architectures.keys():
             print(f"Creating {arch}-latest manifest...")

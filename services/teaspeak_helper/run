@@ -1,2 +1,2 @@
-#!/command/with-contenv sh
+#!/bin/bash
 exec s6-setuidgid tea /opt/teaspeak/scripts/helper.sh

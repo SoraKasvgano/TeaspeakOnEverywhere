@@ -139,6 +139,7 @@ log_info "Setting up environment..."
 
 # Export environment variables
 export DOCKER_HUB_USERNAME
+export TEASPEAK_TAG="latest"
 
 # Create necessary directories
 mkdir -p data/{logs,files,database,certs} config
@@ -235,8 +236,8 @@ if [ -n "$PROFILE" ] && [ "$PROFILE" = "web" ]; then
     log_success "✅ Web interface: http://localhost:8080"
 fi
 
-log_info "Docker Hub image: $DOCKER_HUB_USERNAME/teaspeak-server:latest"
-log_info "Architecture: $ARCH"
+log_info "Docker Hub image: $DOCKER_HUB_USERNAME/teaspeak-server:latest (multi-architecture)"
+log_info "Architecture: $ARCH (auto-detected)"
 
 # Show logs if requested
 if [ "$SHOW_LOGS" = true ]; then

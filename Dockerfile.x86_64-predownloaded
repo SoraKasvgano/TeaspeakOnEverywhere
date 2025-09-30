@@ -13,17 +13,17 @@ ENV DEBUG=0
 ENV TEA_ARCHITECTURE=amd64
 ENV SYSTEM_ARCHITECTURE=x86_64
 ENV EMULATOR=none
+ENV S6_BEHAVIOUR_IF_STAGE2_FAILS=2
+ENV S6_CMD_WAIT_FOR_SERVICES_MAXTIME=0
 
 LABEL Maintainer="teaspeak-x86_64"
 
-# Add s6 overlay for process management
-ADD https://github.com/just-containers/s6-overlay/releases/download/v3.1.6.2/s6-overlay-x86_64.tar.xz /tmp/
-ADD https://github.com/just-containers/s6-overlay/releases/download/v3.1.6.2/s6-overlay-noarch.tar.xz /tmp/
-
-# Create directories and install dependencies
+# Install basic dependencies first (including bash)
 RUN apt-get update && \
     apt-get upgrade -y && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y \
+        bash \
+        coreutils \
         wget \
         curl \
         unzip \
@@ -36,7 +36,14 @@ RUN apt-get update && \
         libdigest-sha-perl \
         locales \
         xz-utils && \
-    mkdir -p /opt/teaspeak && \
+    rm -rf /var/lib/apt/lists/*
+
+# Add s6 overlay for process management
+ADD https://github.com/just-containers/s6-overlay/releases/download/v3.1.6.2/s6-overlay-x86_64.tar.xz /tmp/
+ADD https://github.com/just-containers/s6-overlay/releases/download/v3.1.6.2/s6-overlay-noarch.tar.xz /tmp/
+
+# Extract s6 overlay and setup locale
+RUN mkdir -p /opt/teaspeak && \
     mkdir -p /opt/teaspeak_cached && \
     mkdir -p /etc/services.d/teaspeak && \
     mkdir -p /etc/services.d/teaspeak_helper && \

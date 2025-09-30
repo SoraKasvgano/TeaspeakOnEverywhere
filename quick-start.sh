@@ -160,6 +160,7 @@ build_local() {
 start_teaspeak() {
     log_info "Starting TeaSpeak..."
     
+    # Use unified latest tag that supports multi-architecture
     if ! ./scripts/start.sh -u "$DOCKER_HUB_USERNAME"; then
         log_error "Failed to start TeaSpeak"
         exit 1

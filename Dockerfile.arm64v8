@@ -24,6 +24,8 @@ ADD https://github.com/just-containers/s6-overlay/releases/download/v3.1.6.2/s6-
 RUN apt-get update && \
     apt-get upgrade -y && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y \
+        bash \
+        coreutils \
         qemu-user-static \
         wget \
         curl \

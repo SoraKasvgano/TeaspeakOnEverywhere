@@ -1,6 +1,15 @@
-#!/command/with-contenv sh
-sh /opt/teaspeak/scripts/startup.sh
+#!/bin/bash
 
-if [ -e "/opt/teaspeak/teastart_minimal.sh" ]; then
-    exec s6-setuidgid tea /opt/teaspeak/teastart_minimal.sh
+# Source environment variables
+source /etc/environment
+
+# Change to TeaSpeak directory
+cd /opt/teaspeak
+
+# Execute the startup.sh script
+if [ -f "/opt/teaspeak/scripts/startup.sh" ]; then
+    exec /opt/teaspeak/scripts/startup.sh
+else
+    echo "Error: startup.sh not found!"
+    exit 1
 fi
