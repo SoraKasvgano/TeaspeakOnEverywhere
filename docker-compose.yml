@@ -4,7 +4,9 @@ version: "3.8"
 services:
   teaspeak:
     container_name: teaspeak-server
-    image: ${DOCKER_HUB_USERNAME:-teaspeak}/teaspeak-server:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.x86_64-predownloaded
     platform: ${TEASPEAK_ARCH:-}
     ports:
       - "${VOICE_PORT:-9987}:9987/udp"

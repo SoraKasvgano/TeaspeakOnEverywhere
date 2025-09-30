@@ -31,7 +31,7 @@ case "$ARCH" in
 esac
 
 # Start TeaSpeak server with QEMU emulation if on ARM
-if [ -f "/opt/teaspeak/teastart_minimal.sh" ]; then
+if [ -f "/opt/teaspeak/TeaSpeakServer" ]; then
     cd /opt/teaspeak
     
     # If QEMU is needed and available, create a wrapper script
@@ -46,9 +46,9 @@ EOF
         chmod +x /opt/teaspeak/start_with_qemu.sh
         exec s6-setuidgid tea /opt/teaspeak/start_with_qemu.sh
     else
-        exec s6-setuidgid tea /opt/teaspeak/teastart_minimal.sh
+        exec s6-setuidgid tea /opt/teaspeak/TeaSpeakServer
     fi
 else
-    echo "Error: teastart_minimal.sh not found!"
+    echo "Error: TeaSpeakServer not found!"
     exit 1
 fi
