@@ -1,2 +1,6 @@
 #!/bin/bash
-exec s6-setuidgid tea /opt/teaspeak/scripts/helper.sh
+# TeaSpeak helper service - runs alongside the main process
+# For now, just sleep indefinitely to keep the service running
+while true; do
+    sleep 3600
+done

@@ -4,12 +4,16 @@
 source /etc/environment
 
 # Change to TeaSpeak directory
-cd /opt/teaspeak
+cd /opt/teaspeak/TeaSpeak-1.4.22
 
-# Execute the startup.sh script
-if [ -f "/opt/teaspeak/scripts/startup.sh" ]; then
-    exec /opt/teaspeak/scripts/startup.sh
+# Set library paths
+export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:./libs/"
+export LD_PRELOAD="./libs/libjemalloc.so.2"
+
+# Execute TeaSpeakServer directly
+if [ -f "/opt/teaspeak/TeaSpeak-1.4.22/TeaSpeakServer" ]; then
+    exec s6-setuidgid tea /opt/teaspeak/TeaSpeak-1.4.22/TeaSpeakServer
 else
-    echo "Error: startup.sh not found!"
+    echo "Error: TeaSpeakServer not found at /opt/teaspeak/TeaSpeak-1.4.22/TeaSpeakServer!"
     exit 1
 fi
