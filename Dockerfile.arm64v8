@@ -27,6 +27,8 @@ RUN apt-get update && \
         bash \
         coreutils \
         qemu-user-static \
+        qemu-user \
+        binfmt-support \
         wget \
         curl \
         unzip \
@@ -45,6 +47,8 @@ RUN apt-get update && \
     mkdir -p /etc/services.d/teaspeak_helper && \
     tar -C / -Jxpf /tmp/s6-overlay-noarch.tar.xz && \
     tar -C / -Jxpf /tmp/s6-overlay-aarch64.tar.xz && \
+    # Register x86_64 architecture with binfmt_misc
+    update-binfmts --enable qemu-x86_64 && \
     sed -i -e 's/# en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen && \
     dpkg-reconfigure --frontend=noninteractive locales && \
     update-locale LANG=en_US.UTF-8 && \
