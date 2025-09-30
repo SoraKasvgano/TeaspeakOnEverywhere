@@ -34,9 +34,7 @@ def setup_buildx():
     run_command(['docker', 'buildx', 'inspect', '--bootstrap'])
 
 def main():
-    # Get user input
-    build_pre_downloaded_input = input('Build pre-downloaded images? [Y/n] ').lower()
-    build_pre_downloaded = build_pre_downloaded_input in ['y', 'yes', '']
+    print("Building pre-downloaded images only")
     
     tag_name = input('Enter tag name: ')
     if not tag_name:
@@ -70,12 +68,13 @@ def main():
         'x86_64': 'linux/amd64'
     }
     
-    # Build regular images
+    # Build pre-downloaded images only
+    print("\nBuilding pre-downloaded images...")
     for arch, platform in architectures.items():
-        dockerfile = f'Dockerfile.{arch}'
+        dockerfile = f'Dockerfile.{arch}-predownloaded'
         image_tag = f'{docker_username}/teaspeak-server:{arch}-{tag_name}'
         
-        print(f"\nBuilding {arch} image for platform {platform}...")
+        print(f"\nBuilding {arch} pre-downloaded image for platform {platform}...")
         
         build_cmd = [
             'docker', 'buildx', 'build',
@@ -92,73 +91,32 @@ def main():
             build_cmd.extend(['--load'])
         
         if not run_command(build_cmd):
-            print(f"Failed to build {arch} image")
+            print(f"Failed to build {arch} pre-downloaded image")
             continue
         
-        print(f"Successfully built {arch} image: {image_tag}")
-    
-    # Build pre-downloaded images if requested
-    if build_pre_downloaded:
-        print("\nBuilding pre-downloaded images...")
-        for arch, platform in architectures.items():
-            dockerfile = f'Dockerfile.{arch}-predownloaded'
-            image_tag = f'{docker_username}/teaspeak-server:{arch}-predownloaded-{tag_name}'
-            
-            print(f"\nBuilding {arch} pre-downloaded image for platform {platform}...")
-            
-            build_cmd = [
-                'docker', 'buildx', 'build',
-                '--platform', platform,
-                '--no-cache',
-                '-t', image_tag,
-                '-f', dockerfile,
-                '.'
-            ]
-            
-            if push_to_registry:
-                build_cmd.append('--push')
-            else:
-                build_cmd.extend(['--load'])
-            
-            if not run_command(build_cmd):
-                print(f"Failed to build {arch} pre-downloaded image")
-                continue
-            
-            print(f"Successfully built {arch} pre-downloaded image: {image_tag}")
+        print(f"Successfully built {arch} pre-downloaded image: {image_tag}")
     
     # Create manifests only if pushing to registry
     if push_to_registry:
         print("\nCreating manifests...")
         
-        # Regular manifest
-        manifest_images = [
+        # Pre-downloaded manifest
+        predownloaded_manifest_images = [
             f'{docker_username}/teaspeak-server:arm32v7-{tag_name}',
             f'{docker_username}/teaspeak-server:arm64v8-{tag_name}',
             f'{docker_username}/teaspeak-server:x86_64-{tag_name}'
         ]
         
         print("Creating latest manifest...")
-        if run_command(['docker', 'manifest', 'create', f'{docker_username}/teaspeak-server:latest'] + manifest_images):
+        if run_command(['docker', 'manifest', 'create', f'{docker_username}/teaspeak-server:latest'] + predownloaded_manifest_images):
             run_command(['docker', 'manifest', 'push', '--purge', f'{docker_username}/teaspeak-server:latest'])
-        
-        # Pre-downloaded manifest
-        if build_pre_downloaded:
-            predownloaded_manifest_images = [
-                f'{docker_username}/teaspeak-server:arm32v7-predownloaded-{tag_name}',
-                f'{docker_username}/teaspeak-server:arm64v8-predownloaded-{tag_name}',
-                f'{docker_username}/teaspeak-server:x86_64-predownloaded-{tag_name}'
-            ]
-            
-            print("Creating latest-predownloaded manifest...")
-            if run_command(['docker', 'manifest', 'create', f'{docker_username}/teaspeak-server:latest-predownloaded'] + predownloaded_manifest_images):
-                run_command(['docker', 'manifest', 'push', '--purge', f'{docker_username}/teaspeak-server:latest-predownloaded'])
         
         # Create unified latest manifest that includes all architectures
         print("Creating unified latest manifest...")
         latest_manifest_cmd = [
             'docker', 'manifest', 'create', 
             f'{docker_username}/teaspeak-server:latest'
-        ] + manifest_images
+        ] + predownloaded_manifest_images
         
         if run_command(latest_manifest_cmd):
             # Annotate each architecture
@@ -180,11 +138,6 @@ def main():
             print(f"Creating {arch}-latest manifest...")
             if run_command(['docker', 'manifest', 'create', f'{docker_username}/teaspeak-server:{arch}-latest', f'{docker_username}/teaspeak-server:{arch}-{tag_name}']):
                 run_command(['docker', 'manifest', 'push', '--purge', f'{docker_username}/teaspeak-server:{arch}-latest'])
-            
-            if build_pre_downloaded:
-                print(f"Creating {arch}-latest-predownloaded manifest...")
-                if run_command(['docker', 'manifest', 'create', f'{docker_username}/teaspeak-server:{arch}-latest-predownloaded', f'{docker_username}/teaspeak-server:{arch}-predownloaded-{tag_name}']):
-                    run_command(['docker', 'manifest', 'push', '--purge', f'{docker_username}/teaspeak-server:{arch}-latest-predownloaded'])
     else:
         print("\nSkipping manifest creation (images not pushed to registry)")
         print("To create manifests later, push the images and run the manifest commands manually.")

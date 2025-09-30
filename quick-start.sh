@@ -122,7 +122,7 @@ build_and_push() {
     
     # Create temporary input for the Python script
     {
-        echo "n"  # Don't build pre-downloaded by default
+        echo "y"  # Build pre-downloaded only
         echo "latest"  # Use latest as tag
         echo "y"  # Push to Docker Hub
         echo "$DOCKER_HUB_USERNAME"  # Docker Hub username
@@ -144,7 +144,7 @@ build_local() {
     
     # Create temporary input for local build
     {
-        echo "n"  # Don't build pre-downloaded
+        echo "y"  # Build pre-downloaded only
         echo "latest"  # Use latest as tag
         echo "n"  # Don't push to Docker Hub (local build)
     } | python3 build_images_fixed.py

@@ -73,7 +73,6 @@ RUN echo "${TEA_VERSION}" > /opt/teaspeak/version && \
 
 # Set permissions and clean up
 RUN chmod +x /opt/teaspeak/scripts/*.sh && \
-    chmod +x /opt/teaspeak/*.sh && \
     chmod +x /opt/teaspeak/TeaSpeak-${TEA_VERSION}/TeaSpeakServer && \
     chmod +x /etc/services.d/teaspeak/run && \
     chmod +x /etc/services.d/teaspeak/finish && \
