@@ -59,15 +59,16 @@ ENV LANG=en_US.UTF-8
 WORKDIR /opt/teaspeak
 
 # Copy TeaSpeak files from local directory (predownloaded version)
-COPY TeaSpeak-${TEA_VERSION}/* /opt/teaspeak/TeaSpeak-1.4.22/
+RUN mkdir -p /opt/teaspeak/TeaSpeak-1.4.22
+COPY TeaSpeak-${TEA_VERSION}/ /opt/teaspeak/TeaSpeak-1.4.22/
 
 # Copy service scripts
 COPY scripts/ /opt/teaspeak/scripts/
 COPY services/ /etc/services.d/
 
 # Copy configuration files
-COPY config.yml /opt/teaspeak/TeaSpeak-1.4.22/
-COPY protocol_key.txt /opt/teaspeak/TeaSpeak-1.4.22/
+COPY config.yml /opt/teaspeak/
+COPY protocol_key.txt /opt/teaspeak/
 
 # Mark as predownloaded version
 RUN echo "${TEA_VERSION}" > /opt/teaspeak/version && \

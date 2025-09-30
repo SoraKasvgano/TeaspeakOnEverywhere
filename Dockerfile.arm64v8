@@ -59,7 +59,8 @@ ENV LANG=en_US.UTF-8
 WORKDIR /opt/teaspeak
 
 # Copy TeaSpeak files from local directory
-COPY TeaSpeak-${TEA_VERSION}/ /opt/teaspeak/
+RUN mkdir -p /opt/teaspeak/TeaSpeak-${TEA_VERSION}/
+COPY TeaSpeak-${TEA_VERSION}/ /opt/teaspeak/TeaSpeak-${TEA_VERSION}/
 
 # Copy service scripts
 COPY scripts/ /opt/teaspeak/scripts/
