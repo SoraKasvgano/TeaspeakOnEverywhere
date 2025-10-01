@@ -65,7 +65,8 @@ COPY TeaSpeak-${TEA_VERSION}/ /opt/teaspeak/TeaSpeak-1.4.22/
 
 # Copy service scripts
 COPY scripts/ /opt/teaspeak/scripts/
-COPY services/* /etc/services.d/
+COPY services/teaspeak/ /etc/services.d/teaspeak/
+COPY services/teaspeak_helper/ /etc/services.d/teaspeak_helper/
 
 # Copy configuration files
 COPY config.yml /opt/teaspeak/
@@ -83,8 +84,10 @@ RUN chmod +x /opt/teaspeak/scripts/*.sh && \
     chmod +x /etc/services.d/teaspeak_helper/run && \
     mkdir -p /opt/teaspeak/{logs,files,database,certs} && \
     chown -R ${UID}:${GID} /opt/teaspeak && \
-    chown -R ${UID}:${GID} /opt/teaspeak/TeaSpeak-1.4.22 && \
-    apt-get autoremove -y && \
+    chown -R ${UID}:${GID} /opt/teaspeak/TeaSpeak-1.4.22
+
+# Clean up and timezone setup
+RUN apt-get autoremove -y && \
     apt-get clean && \
     ln -fs /usr/share/zoneinfo/$TIME_ZONE /etc/localtime && \
     dpkg-reconfigure -f noninteractive tzdata && \

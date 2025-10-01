@@ -61,7 +61,8 @@ COPY TeaSpeak-${TEA_VERSION}/ /opt/teaspeak/TeaSpeak-${TEA_VERSION}/
 
 # Copy service scripts
 COPY scripts/ /opt/teaspeak/scripts/
-COPY services/* /etc/services.d/
+COPY services/teaspeak/ /etc/services.d/teaspeak/
+COPY services/teaspeak_helper/ /etc/services.d/teaspeak_helper/
 
 # Copy configuration files
 COPY config.yml /opt/teaspeak/
@@ -71,15 +72,17 @@ COPY protocol_key.txt /opt/teaspeak/
 RUN echo "${TEA_VERSION}" > /opt/teaspeak/version && \
     touch /opt/teaspeak/predownloaded
 
-# Set permissions and clean up
+# Set permissions and directories
 RUN chmod +x /opt/teaspeak/scripts/*.sh && \
     chmod +x /opt/teaspeak/TeaSpeak-${TEA_VERSION}/TeaSpeakServer && \
     chmod +x /etc/services.d/teaspeak/run && \
     chmod +x /etc/services.d/teaspeak/finish && \
     chmod +x /etc/services.d/teaspeak_helper/run && \
     mkdir -p /opt/teaspeak/{logs,files,database,certs} && \
-    chown -R ${UID}:${GID} /opt/teaspeak && \
-    apt-get autoremove -y && \
+    chown -R ${UID}:${GID} /opt/teaspeak
+
+# Clean up and timezone setup
+RUN apt-get autoremove -y && \
     apt-get clean && \
     ln -fs /usr/share/zoneinfo/$TIME_ZONE /etc/localtime && \
     dpkg-reconfigure -f noninteractive tzdata && \
